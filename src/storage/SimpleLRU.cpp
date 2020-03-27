@@ -13,8 +13,6 @@ namespace Afina {
 namespace Backend {
 
 void SimpleLRU::DeleteNode(lru_node &tmp) {
-    _cur_size -= tmp.key.size() + tmp.value.size();
-
     auto next = std::move(tmp.next);
     auto prev = tmp.prev;
 
@@ -29,6 +27,8 @@ void SimpleLRU::DeleteNode(lru_node &tmp) {
     } else {
         _lru_head = std::move(next);
     }
+
+    _cur_size -= tmp.key.size() + tmp.value.size();
 }
 
 void SimpleLRU::MoveNodeToTail(lru_node &tmp) {
@@ -53,12 +53,12 @@ void SimpleLRU::MoveNodeToTail(lru_node &tmp) {
 }
 
 void SimpleLRU::InsertNewNode(const std::string &key, const std::string &value) {
-    _cur_size += key.size() + value.size();
-
-    while(_cur_size > _max_size) {
+    while(_cur_size + key.size() + value.size() > _max_size) {
         _lru_index.erase(_lru_head->key);
         DeleteNode(*_lru_head.get());
     }
+
+    _cur_size += key.size() + value.size();
 
     if(!_lru_head) {
         _lru_head = std::make_unique<lru_node>(lru_node{ key, value, nullptr, nullptr });
@@ -74,16 +74,16 @@ void SimpleLRU::InsertNewNode(const std::string &key, const std::string &value) 
 }
 
 void SimpleLRU::ChangeNode(lru_node &tmp, const std::string &value) {
-    _cur_size -= tmp.value.size();
-    _cur_size += value.size();
-    tmp.value = value;
-
     MoveNodeToTail(tmp);
 
-    while(_cur_size > _max_size) {
+    while(_cur_size - tmp.value.size() + value.size() > _max_size) {
         _lru_index.erase(_lru_head->key);
         DeleteNode(*_lru_head.get());
     }
+
+    _cur_size -= tmp.value.size();
+    _cur_size += value.size();
+    tmp.value = value;
 }
 
 // See MapBasedGlobalLockImpl.h
